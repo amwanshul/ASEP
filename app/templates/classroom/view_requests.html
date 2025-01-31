@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Classroom Join Requests{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Classroom Join Requests</h1>
+        <p>Review and manage requests to join your classrooms</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="requests-container">
+        {% if requests %}
+            {% for request in requests %}
+            <div class="request-card card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ request.user.username }} wants to join {{ request.classroom.name }}</h5>
+                    <small class="text-muted">{{ request.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+                
+                <div class="card-body">
+                    {% if request.message %}
+                    <div class="request-message mb-4">
+                        <h6>Student's Message:</h6>
+                        <p class="mb-0">{{ request.message }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="request-actions d-flex gap-3">
+                        <form method="POST" action="{{ url_for('classroom.approve_request', id=request.id) }}" class="flex-grow-1">
+                            {{ approve_form.csrf_token }}
+                            <div class="form-group mb-3">
+                                {{ approve_form.response_message(class="form-control", placeholder="Optional: Add a response message") }}
+                            </div>
+                            {{ approve_form.submit(class="btn btn-success w-100", value="Approve") }}
+                        </form>
+
+                        <form method="POST" action="{{ url_for('classroom.reject_request', id=request.id) }}" class="flex-grow-1">
+                            {{ reject_form.csrf_token }}
+                            <div class="form-group mb-3">
+                                {{ reject_form.response_message(class="form-control", placeholder="Optional: Add a reason for rejection") }}
+                            </div>
+                            {{ reject_form.submit(class="btn btn-danger w-100", value="Reject") }}
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                No pending classroom join requests.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+<div class="forum-post">
+    <div class="post-header">
+        <h1>{{ post.title }}</h1>
+        <div class="post-meta">
+            <span class="classroom">{{ post.classroom.name }}</span>
+            <span class="author">by {{ post.author.username }}</span>
+            <span class="date">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+    </div>
+
+    <div class="post-container">
+        <div class="post-sidebar">
+            <div class="vote-section">
+                <button class="vote-button" data-post-id="{{ post.id }}">
+                    <span class="vote-icon">▲</span>
+                    <span class="vote-count">{{ post.votes }}</span>
+                </button>
+            </div>
+            <div class="post-status">
+                {% if post.is_resolved %}
+                <span class="status resolved">Resolved</span>
+                {% endif %}
+                {% if post.is_escalated %}
+                <span class="status escalated">Escalated</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="post-content">
+            <div class="content-body">
+                {{ post.content|nl2br }}
+            </div>
+
+            {% if post.attachments %}
+            <div class="attachments-section">
+                <h3>Attachments</h3>
+                <div class="attachments-list">
+                    {% for attachment in post.attachments %}
+                    <div class="attachment-item">
+                        <a href="{{ url_for('forum.download_attachment', id=attachment.id) }}" class="attachment-link">
+                            <span class="attachment-icon">📎</span>
+                            <span class="attachment-name">{{ attachment.filename }}</span>
+                            <span class="attachment-size">({{ (attachment.file_size / 1024)|round(1) }} KB)</span>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if current_user.id == post.author_id or current_user.role == 'teacher' %}
+            <div class="post-actions">
+                {% if not post.is_resolved %}
+                <form method="POST" action="{{ url_for('forum.mark_resolved', id=post.id) }}" class="inline-form">
+                    {{ resolve_form.csrf_token }}
+                    <button type="submit" class="btn secondary">Mark as Resolved</button>
+                </form>
+                {% endif %}
+                {% if current_user.role == 'teacher' and not post.is_escalated %}
+                <form method="POST" action="{{ url_for('forum.escalate', id=post.id) }}" class="inline-form">
+                    {{ escalate_form.csrf_token }}
+                    <button type="submit" class="btn warning">Escalate</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="comments-section">
+        <h2>Comments</h2>
+        <div class="comments-list">
+            {% for comment in post.comments %}
+            <div class="comment">
+                <div class="comment-meta">
+                    <span class="author">{{ comment.author.username }}</span>
+                    <span class="date">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <div class="comment-content">
+                    {{ comment.content|nl2br }}
+                </div>
+                {% if comment.is_solution %}
+                <div class="solution-badge">
+                    <span class="badge">Solution ✓</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="add-comment">
+            <h3>Add a Comment</h3>
+            <form method="POST" action="{{ url_for('forum.add_comment', id=post.id) }}">
+                {{ comment_form.csrf_token }}
+                <div class="form-group">
+                    {{ comment_form.content(class="form-control", rows=4, placeholder="Share your thoughts or provide an answer...") }}
+                </div>
+                <button type="submit" class="btn primary">Post Comment</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const voteButtons = document.querySelectorAll('.vote-button');
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    voteButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+            const postId = this.dataset.postId;
+            try {
+                const response = await fetch(`/forum/post/${postId}/vote`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    this.querySelector('.vote-count').textContent = data.votes;
+                }
+            } catch (error) {
+                console.error('Error voting:', error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

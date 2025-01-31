@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Request Classroom{% endblock %}
+
+{% block content %}
+<div class="classroom-request">
+    <div class="page-header">
+        <h1>Request a New Classroom</h1>
+        <p>Fill out this form to request a new classroom. A teacher will review your request.</p>
+    </div>
+
+    <div class="form-container">
+        <form method="POST" action="{{ url_for('classroom.request_classroom') }}">
+            <div class="form-group">
+                <label for="teacher">Select Teacher</label>
+                <select id="teacher" name="teacher_id" required>
+                    <option value="">Choose a teacher</option>
+                    {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.username }} ({{ teacher.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="name">Classroom Name</label>
+                <input type="text" id="name" name="name" required
+                       placeholder="e.g., Advanced Mathematics 101">
+            </div>
+
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" required
+                       placeholder="e.g., Mathematics">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" required
+                          placeholder="Describe what you want to learn in this classroom..."></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn primary">Submit Request</button>
+                <a href="{{ url_for('main.dashboard') }}" class="btn secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

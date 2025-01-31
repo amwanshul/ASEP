@@ -1,0 +1,211 @@
+# Import models to make them available when importing from app.models
+from app.models.user import User
+from app.models.classroom import Classroom, ClassroomMember, Resource
+from app.models.announcement import Announcement
+from app.models.forum import ForumPost, ForumComment
+from app.models.notification import Notification
+
+# Make models available at package level
+__all__ = [
+    'User',
+    'Classroom',
+    'ClassroomMember',
+    'Resource',
+    'Announcement',
+    'ForumPost',
+    'ForumComment',
+    'Notification'
+]
+
+# This file can be empty, it's just to make the models directory a Python package
+
+from app import db
+from datetime import datetime
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# User Model
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    role = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Profile information
+    full_name = db.Column(db.String(120))
+    bio = db.Column(db.Text)
+    points = db.Column(db.Integer, default=0)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# Classroom Models
+class Classroom(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    subject = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    teacher = db.relationship('User', backref='classrooms_taught')
+    members = db.relationship('ClassroomMember', backref='classroom', lazy='dynamic')
+    resources = db.relationship('Resource', backref='classroom', lazy='dynamic')
+    forum_posts = db.relationship('ForumPost', backref=db.backref('classroom', lazy='joined'), lazy='dynamic')
+    announcements = db.relationship('Announcement', lazy='dynamic')
+
+class ClassroomMember(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    role = db.Column(db.String(20), default='student')  # student, teacher
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='classroom_memberships')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'classroom_id': self.classroom_id,
+            'user_id': self.user_id,
+            'role': self.role,
+            'joined_at': self.joined_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class Resource(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text)
+    file_path = db.Column(db.String(255))
+    resource_type = db.Column(db.String(50))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    uploader = db.relationship('User', backref='uploaded_resources')
+
+# Classroom Request Model
+class ClassroomRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text)
+    subject = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    student = db.relationship('User', foreign_keys=[student_id], backref='classroom_requests_made')
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='classroom_requests_received')
+
+# Forum Models
+class ForumPost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(120), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    is_resolved = db.Column(db.Boolean, default=False)
+    is_escalated = db.Column(db.Boolean, default=False)
+    votes = db.Column(db.Integer, default=0)
+    
+    author = db.relationship('User', backref='forum_posts')
+    comments = db.relationship('ForumComment', backref='post', lazy='dynamic')
+    attachments = db.relationship('FileAttachment', backref=db.backref('forum_post', lazy='joined'), lazy='dynamic')
+
+class ForumComment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('forum_post.id'), nullable=False)
+    
+    is_solution = db.Column(db.Boolean, default=False)
+    votes = db.Column(db.Integer, default=0)
+    
+    author = db.relationship('User', backref='forum_comments')
+
+# File Attachment Model
+class FileAttachment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    file_type = db.Column(db.String(50))
+    file_size = db.Column(db.Integer)  # in bytes
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    post_id = db.Column(db.Integer, db.ForeignKey('forum_post.id'), nullable=False)
+    uploader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    uploader = db.relationship('User', backref='uploaded_files')
+
+# Announcement Model
+class Announcement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    teacher = db.relationship('User', backref='announcements_made')
+    classroom = db.relationship('Classroom')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'content': self.content,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'teacher': self.teacher.username,
+            'classroom': self.classroom.name
+        }
+
+# Teacher Ping Model
+class TeacherPing(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='unread')  # unread, read, responded
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    student = db.relationship('User', foreign_keys=[student_id], backref='pings_sent')
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='pings_received')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'message': self.message,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'status': self.status,
+            'student': self.student.username,
+            'teacher': self.teacher.username
+        }
+
+# Notification Model
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(50), nullable=False)  # announcement, ping
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    source_id = db.Column(db.Integer)  # ID of the announcement or ping
+    
+    user = db.relationship('User', backref='notifications')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'content': self.content,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'is_read': self.is_read
+        }

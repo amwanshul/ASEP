@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Join Classroom{% endblock %}
+
+{% block content %}
+<div class="classroom-join">
+    <div class="page-header">
+        <h1>Join a Classroom</h1>
+        <p>Browse available classrooms and join the ones you're interested in.</p>
+    </div>
+
+    <div class="classroom-list">
+        {% if classrooms %}
+            {% for classroom in classrooms %}
+            <div class="classroom-card">
+                <div class="classroom-info">
+                    <h2>{{ classroom.name }}</h2>
+                    <p class="subject">{{ classroom.subject }}</p>
+                    <p class="description">{{ classroom.description }}</p>
+                    <p class="teacher">Taught by: {{ classroom.teacher.username }}</p>
+                </div>
+                <div class="classroom-actions">
+                    <form method="POST" action="{{ url_for('classroom.join') }}">
+                        <input type="hidden" name="classroom_id" value="{{ classroom.id }}">
+                        <button type="submit" class="btn primary">Join Class</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <p>No classrooms available at the moment.</p>
+                <p>Please check back later or contact your teacher.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

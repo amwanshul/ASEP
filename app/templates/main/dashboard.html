@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Welcome, {{ current_user.username }}!</h1>
+        <p>Role: {{ current_user.role | title }}</p>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <h3>Points</h3>
+            <p class="stat-value">{{ current_user.points or 0 }}</p>
+        </div>
+        {% if current_user.role == 'student' %}
+        <div class="stat-card">
+            <h3>Classes Joined</h3>
+            <p class="stat-value">{{ classrooms|length }}</p>
+        </div>
+        {% else %}
+        <div class="stat-card">
+            <h3>Classes Teaching</h3>
+            <p class="stat-value">{{ classrooms|length }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="dashboard-actions">
+        {% if current_user.role == 'teacher' %}
+        <div class="action-section">
+            <h2>Your Classes</h2>
+            <a href="{{ url_for('classroom.create') }}" class="btn btn-primary">Create New Class</a>
+            <div class="class-list">
+                {% if classrooms %}
+                    {% for classroom in classrooms %}
+                    <div class="class-card">
+                        <h3>{{ classroom.name }}</h3>
+                        <p>{{ classroom.description }}</p>
+                        <a href="{{ url_for('classroom.view', id=classroom.id) }}" class="btn btn-secondary">View Class</a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No classes created yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="action-section">
+            <h2>Your Classes</h2>
+            <a href="{{ url_for('classroom.list') }}" class="btn btn-primary" role="button">Join New Class</a>
+            <div class="class-list">
+                {% if classrooms %}
+                    {% for classroom in classrooms %}
+                    <div class="class-card">
+                        <h3>{{ classroom.name }}</h3>
+                        <p>{{ classroom.description }}</p>
+                        <div class="class-meta">
+                            <span>Teacher: {{ classroom.teacher.username }}</span>
+                            <span>Subject: {{ classroom.subject }}</span>
+                        </div>
+                        <a href="{{ url_for('classroom.view', id=classroom.id) }}" class="btn btn-secondary">View Class</a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>You haven't joined any classes yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="action-section">
+            <h2>Recent Activity</h2>
+            <div class="activity-list">
+                {% for post in current_user.posts[:5] %}
+                <div class="activity-item">
+                    <span class="activity-type">Forum Post</span>
+                    <p>{{ post.title }}</p>
+                    <span class="activity-date">{{ post.created_at.strftime('%Y-%m-%d') }}</span>
+                </div>
+                {% else %}
+                <p>No recent activity.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

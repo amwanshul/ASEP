@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Welcome to LearnArc</h1>
+    <p>A peer learning platform for students and teachers</p>
+    {% if not current_user.is_authenticated %}
+        <div class="cta-buttons">
+            <a href="{{ url_for('auth.register') }}" class="btn primary">Get Started</a>
+            <a href="{{ url_for('auth.login') }}" class="btn secondary">Login</a>
+        </div>
+    {% endif %}
+</div>
+
+<section class="features">
+    <h2>Features</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>Interactive Classrooms</h3>
+            <p>Join virtual classrooms and collaborate with peers</p>
+        </div>
+        <div class="feature-card">
+            <h3>Doubt Forum</h3>
+            <p>Ask questions and help others learn</p>
+        </div>
+        <div class="feature-card">
+            <h3>AI-Generated Quizzes</h3>
+            <p>Test your knowledge with smart quizzes</p>
+        </div>
+        <div class="feature-card">
+            <h3>Gamified Learning</h3>
+            <p>Earn points and badges as you learn</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

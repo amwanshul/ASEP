@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Classroom Requests{% endblock %}
+
+{% block content %}
+<div class="classroom-requests">
+    <div class="page-header">
+        <h1>Classroom Requests</h1>
+        <p>Review and manage classroom requests from students.</p>
+    </div>
+
+    {% if requests %}
+    <div class="bulk-actions">
+        <button id="selectAll" class="btn secondary">Select All</button>
+        <button id="approveSelected" class="btn primary">Approve Selected</button>
+        <button id="rejectSelected" class="btn warning">Reject Selected</button>
+    </div>
+
+    <div class="requests-list">
+        {% for request in requests %}
+        <div class="request-card" data-request-id="{{ request.id }}">
+            <div class="request-checkbox">
+                <input type="checkbox" class="request-select" value="{{ request.id }}">
+            </div>
+            <div class="request-content">
+                <h3>{{ request.name }}</h3>
+                <div class="request-meta">
+                    <span class="subject">{{ request.subject }}</span>
+                    <span class="student">Requested by: {{ request.student.username }}</span>
+                    <span class="date">{{ request.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <p class="description">{{ request.description }}</p>
+                <div class="request-actions">
+                    <button class="btn primary approve-btn" data-request-id="{{ request.id }}">Approve</button>
+                    <button class="btn warning reject-btn" data-request-id="{{ request.id }}">Reject</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No pending classroom requests.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllBtn = document.getElementById('selectAll');
+    const approveSelectedBtn = document.getElementById('approveSelected');
+    const rejectSelectedBtn = document.getElementById('rejectSelected');
+    const checkboxes = document.querySelectorAll('.request-select');
+    
+    // Individual approve/reject buttons
+    document.querySelectorAll('.approve-btn, .reject-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const requestId = this.dataset.requestId;
+            const action = this.classList.contains('approve-btn') ? 'approve' : 'reject';
+            
+            try {
+                const response = await fetch(`/classroom/request/${requestId}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const card = document.querySelector(`[data-request-id="${requestId}"]`);
+                    card.remove();
+                    if (document.querySelectorAll('.request-card').length === 0) {
+                        location.reload();
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    });
+    
+    // Select all functionality
+    selectAllBtn.addEventListener('click', function() {
+        const isAllSelected = [...checkboxes].every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !isAllSelected);
+    });
+    
+    // Bulk actions
+    async function bulkAction(action) {
+        const selectedIds = [...checkboxes]
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+            
+        if (selectedIds.length === 0) return;
+        
+        try {
+            const response = await fetch('/classroom/requests/bulk-action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: action,
+                    request_ids: selectedIds
+                })
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+    
+    approveSelectedBtn.addEventListener('click', () => bulkAction('approve'));
+    rejectSelectedBtn.addEventListener('click', () => bulkAction('reject'));
+});
+</script>
+{% endblock %}
+{% endblock %}

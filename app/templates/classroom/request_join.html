@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Request to Join {{ classroom.name }}{% endblock %}
+
+{% block content %}
+<div class="request-join">
+    <div class="page-header">
+        <h1>Request to Join {{ classroom.name }}</h1>
+        <p>Send a request to join this classroom</p>
+    </div>
+
+    <div class="form-container">
+        <form method="POST">
+            {{ form.csrf_token }}
+            <div class="form-group">
+                <label for="message">Message to Teacher (Optional)</label>
+                {{ form.message(class="form-control", placeholder="Add a message to your request...") }}
+            </div>
+            <div class="form-actions">
+                {{ form.submit(class="btn primary") }}
+                <a href="{{ url_for('classroom.view', id=classroom.id) }}" class="btn secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
